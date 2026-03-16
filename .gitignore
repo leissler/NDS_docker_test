@@ -6,6 +6,7 @@
 !/Dockerfile
 !/build.py
 !/.clangd
+!/Makefile
 
 # Devcontainer + VSCode workflow
 !/.devcontainer/

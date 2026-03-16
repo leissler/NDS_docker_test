@@ -1,0 +1,21 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "BlocksDS (Dev Container)",
+      "compilerPath": "/opt/wonderful/toolchain/gcc-arm-none-eabi/bin/arm-none-eabi-gcc",
+      "intelliSenseMode": "gcc-arm",
+      "cStandard": "gnu11",
+      "cppStandard": "gnu++17",
+      "defines": [
+        "ARM9"
+      ],
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/opt/wonderful/thirdparty/blocksds/core/libs/libnds/include",
+        "/opt/wonderful/thirdparty/blocksds/external/nitro-engine/include",
+        "/opt/wonderful/thirdparty/blocksds/external/nflib/include"
+      ]
+    }
+  ]
+}

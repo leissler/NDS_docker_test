@@ -1,0 +1,10 @@
+CompileFlags:
+  Add:
+    - -DARM9
+    - -std=gnu11
+    - -isystem
+    - /opt/wonderful/thirdparty/blocksds/core/libs/libnds/include
+    - -isystem
+    - /opt/wonderful/thirdparty/blocksds/external/nitro-engine/include
+    - -isystem
+    - /opt/wonderful/thirdparty/blocksds/external/nflib/include

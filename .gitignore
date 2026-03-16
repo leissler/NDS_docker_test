@@ -1,0 +1,43 @@
+# Strict whitelist: track only files required to build and work on this project.
+*
+!/.gitignore
+
+# Core build files
+!/Dockerfile
+!/build.py
+!/.clangd
+
+# Devcontainer + VSCode workflow
+!/.devcontainer/
+!/.devcontainer/Dockerfile
+!/.devcontainer/devcontainer.json
+!/.vscode/
+!/.vscode/c_cpp_properties.json
+!/.vscode/tasks.json
+
+# Local build helper module
+!/architectds/
+!/architectds/__init__.py
+!/architectds/architectds.py
+
+# Source
+!/source/
+!/source/main.c
+
+# Build input assets only
+!/assets/
+!/assets/bg/
+!/assets/bg/bg0.png
+!/assets/bg/bg1.png
+!/assets/bg/bg2.png
+!/assets/bg/bg3.png
+!/assets/fnt/
+!/assets/fnt/default.png
+!/assets/sprite/
+!/assets/sprite/character.png
+!/assets/robot/
+!/assets/robot/robot.grit
+!/assets/robot/robot.json
+!/assets/robot/robot.md5mesh
+!/assets/robot/robot.png
+!/assets/robot/wave.md5anim

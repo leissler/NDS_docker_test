@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build All",
+      "type": "shell",
+      "command": "if [ -f /.dockerenv ] || [ -n \"$REMOTE_CONTAINERS\" ]; then python3 build.py; else docker build -f Dockerfile --target builder -t ndscompiler-builder . && docker run --rm -v \"${workspaceFolder}:/test\" -w /test ndscompiler-builder python3 build.py; fi",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build All (Latest Toolchain)",
+      "type": "shell",
+      "command": "if [ -f /.dockerenv ] || [ -n \"$REMOTE_CONTAINERS\" ]; then echo 'Inside devcontainer: rebuild the devcontainer image to refresh toolchain, then run Build All.' && python3 build.py; else docker build --pull --no-cache -f Dockerfile --target builder -t ndscompiler-builder . && docker run --rm -v \"${workspaceFolder}:/test\" -w /test ndscompiler-builder python3 build.py; fi",
+      "problemMatcher": []
+    },
+    {
+      "label": "Clean All",
+      "type": "shell",
+      "command": "find . -maxdepth 1 -name '*.nds' -delete; find . -maxdepth 1 -name 'build.ninja' -delete; find . -maxdepth 1 -name '.ninja_deps' -delete; find . -maxdepth 1 -name '.ninja_log' -delete; find build output architectds/__pycache__ -type f -delete 2>/dev/null || true; find build output architectds/__pycache__ -depth -type d -empty -delete 2>/dev/null || true; if [ ! -f /.dockerenv ] && [ -z \"$REMOTE_CONTAINERS\" ]; then docker rmi -f ndscompiler ndscompiler-builder nds-devcontainer-test 2>/dev/null || true; fi; echo Clean complete.",
+      "problemMatcher": []
+    }
+  ]
+}

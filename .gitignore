@@ -1,44 +1,52 @@
-# Strict whitelist: track only files required to build and work on this project.
+# Keep the repository tight: ignore everything by default, then whitelist
+# project inputs and tooling.
 *
 !/.gitignore
 
 # Core build files
 !/Dockerfile
 !/build.py
-!/.clangd
 !/Makefile
+!/.clangd
 
 # Devcontainer + VSCode workflow
 !/.devcontainer/
-!/.devcontainer/Dockerfile
-!/.devcontainer/devcontainer.json
+!/.devcontainer/**
 !/.vscode/
 !/.vscode/c_cpp_properties.json
 !/.vscode/tasks.json
+!/.vscode/launch.json
+!/.emulator-bridge.env.example
 
 # Local build helper module
 !/architectds/
-!/architectds/__init__.py
-!/architectds/architectds.py
+!/architectds/**
 
-# Source
+# Project source and content (artists/devs can add new files here)
 !/source/
-!/source/main.c
-
-# Build input assets only
+!/source/**
 !/assets/
-!/assets/bg/
-!/assets/bg/bg0.png
-!/assets/bg/bg1.png
-!/assets/bg/bg2.png
-!/assets/bg/bg3.png
-!/assets/fnt/
-!/assets/fnt/default.png
-!/assets/sprite/
-!/assets/sprite/character.png
-!/assets/robot/
-!/assets/robot/robot.grit
-!/assets/robot/robot.json
-!/assets/robot/robot.md5mesh
-!/assets/robot/robot.png
-!/assets/robot/wave.md5anim
+!/assets/**
+/assets/**/*.blend
+/assets/**/*.dsmparam
+
+# Emulator launcher/config helpers
+!/tools/
+!/tools/**
+!/scripts/
+!/scripts/**
+
+# Ignore generated artifacts and local junk
+/.git/
+/build/
+/output/
+/build.ninja
+/.ninja_deps
+/.ninja_log
+/.debug-logs/
+/*.nds
+/architectds/__pycache__/
+/scripts/__pycache__/
+/tools/__pycache__/
+/.devcontainer/nds-bridge-init.log
+**/.DS_Store

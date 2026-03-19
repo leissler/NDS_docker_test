@@ -12,6 +12,30 @@
       "problemMatcher": []
     },
     {
+      "label": "Debug: Reset Logs",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "mkdir -p \"${workspaceFolder}/.debug-logs\" && find \"${workspaceFolder}/.debug-logs\" -mindepth 1 -maxdepth 1 -type f ! -name \"nds-host-bridge.log\" -delete && : > \"${workspaceFolder}/.debug-logs/nds-host-bridge.log\" && echo \"Reset ${workspaceFolder}/.debug-logs (kept host bridge log file)\""
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Build Debug ROM",
+      "type": "shell",
+      "command": "make build-debug",
+      "group": {
+        "kind": "build"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Build All (Latest Toolchain)",
       "type": "shell",
       "command": "make build-latest",
@@ -22,6 +46,83 @@
       "type": "shell",
       "command": "make distclean",
       "problemMatcher": []
+    },
+    {
+      "label": "Check ARM GDB",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "\"${workspaceFolder}/tools/arm-gdb-wrapper.sh\" --version >/dev/null"
+      ],
+      "problemMatcher": [],
+      "hide": true
+    },
+    {
+      "label": "Launch Host Emulator (Bridge, Debug)",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/tools/run-emulator.mjs"
+      ],
+      "options": {
+        "env": {
+          "NDS_SKIP_BUILD": "1",
+          "NDS_LAUNCH_CONTEXT": "host",
+          "NDS_LAUNCH_MODE": "debug",
+          "NDS_EMULATOR": "melonds",
+          "NDS_GDB_PORT": "3333",
+          "NDS_DEBUG_LOG_DIR": "${workspaceFolder}/.debug-logs",
+          "NDS_BRIDGE_STATE_FILE": "${workspaceFolder}/.debug-logs/nds-bridge-state.json"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "hide": false
+    },
+    {
+      "label": "Ensure Local GDB Endpoint",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "\"${workspaceFolder}/tools/ensure-gdb-proxy.sh\""
+      ],
+      "options": {
+        "env": {
+          "NDS_DEBUG_LOG_DIR": "${workspaceFolder}/.debug-logs",
+          "NDS_BRIDGE_STATE_FILE": "${workspaceFolder}/.debug-logs/nds-bridge-state.json"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "hide": false
+    },
+    {
+      "label": "Prepare Debug Session (auto)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Debug: Reset Logs",
+        "Check ARM GDB",
+        "Build Debug ROM",
+        "Launch Host Emulator (Bridge, Debug)",
+        "Ensure Local GDB Endpoint"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "hide": false
     }
   ]
 }

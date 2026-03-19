@@ -6,44 +6,46 @@ DOCKERFILE ?= Dockerfile
 BUILDER_IMAGE ?= ndscompiler-builder
 DEVCONTAINER_IMAGE ?= nds-devcontainer
 
-.PHONY: help build build-latest build-local clean distclean
+.PHONY: help build build-debug build-latest build-latest-debug build-local clean distclean _build
 
 help:
 	@echo "Available targets:"
-	@echo "  make build         - Build ROM (devcontainer/local toolchain or Docker fallback)"
-	@echo "  make build-latest  - Rebuild Docker toolchain with latest packages, then build"
+	@echo "  make build         - Build release ROM (devcontainer/local toolchain or Docker fallback)"
+	@echo "  make build-debug   - Build debug ROM"
+	@echo "  make build-latest  - Rebuild Docker toolchain with latest packages, then build release ROM"
+	@echo "  make build-latest-debug - Rebuild Docker toolchain with latest packages, then build debug ROM"
 	@echo "  make build-local   - Build directly with local toolchain (expects BLOCKSDS setup)"
 	@echo "  make clean         - Remove generated build artifacts and ROMs"
 	@echo "  make distclean     - clean + remove local Docker build images (host only)"
 
 build:
+	@$(MAKE) _build PROFILE=release LATEST=0
+
+build-debug:
+	@$(MAKE) _build PROFILE=debug LATEST=0
+
+build-latest:
+	@$(MAKE) _build PROFILE=release LATEST=1
+
+build-latest-debug:
+	@$(MAKE) _build PROFILE=debug LATEST=1
+
+_build:
 	@set -e; \
 	if [ -f /.dockerenv ] || [ -n "$$REMOTE_CONTAINERS" ]; then \
-		python3 $(BUILD_SCRIPT); \
+		NDS_BUILD_PROFILE=$(PROFILE) python3 $(BUILD_SCRIPT); \
 	elif command -v python3 >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1 && [ -n "$$BLOCKSDS" ] && [ -d "$$BLOCKSDS" ]; then \
-		python3 $(BUILD_SCRIPT); \
+		NDS_BUILD_PROFILE=$(PROFILE) python3 $(BUILD_SCRIPT); \
 	elif command -v docker >/dev/null 2>&1; then \
-		docker build -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .; \
-		docker run --rm -v "$(PROJECT_DIR):/test" -w /test $(BUILDER_IMAGE) python3 $(BUILD_SCRIPT); \
+		if [ "$(LATEST)" = "1" ]; then \
+			docker build --pull --no-cache -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .; \
+		else \
+			docker build -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .; \
+		fi; \
+		docker run --rm -e NDS_BUILD_PROFILE=$(PROFILE) -v "$(PROJECT_DIR):/test" -w /test $(BUILDER_IMAGE) python3 $(BUILD_SCRIPT); \
 	else \
 		echo "Error: no build environment found."; \
 		echo "Use devcontainer, install local BlocksDS toolchain, or install Docker."; \
-		exit 1; \
-	fi
-
-build-latest:
-	@set -e; \
-	if [ -f /.dockerenv ] || [ -n "$$REMOTE_CONTAINERS" ]; then \
-		echo "Inside devcontainer: rebuild the devcontainer image to refresh toolchain."; \
-		python3 $(BUILD_SCRIPT); \
-	elif command -v python3 >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1 && [ -n "$$BLOCKSDS" ] && [ -d "$$BLOCKSDS" ]; then \
-		echo "Using local toolchain from BLOCKSDS=$$BLOCKSDS"; \
-		python3 $(BUILD_SCRIPT); \
-	elif command -v docker >/dev/null 2>&1; then \
-		docker build --pull --no-cache -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .; \
-		docker run --rm -v "$(PROJECT_DIR):/test" -w /test $(BUILDER_IMAGE) python3 $(BUILD_SCRIPT); \
-	else \
-		echo "Error: Docker not found and no local toolchain available."; \
 		exit 1; \
 	fi
 

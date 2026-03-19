@@ -1,11 +1,23 @@
 {
   "name": "NDS BlocksDS Dev",
+  "initializeCommand": "bash scripts/start_nds_bridge.sh || powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_nds_bridge.ps1",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
   },
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway",
+    "--add-host=gateway.docker.internal:host-gateway"
+  ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "containerEnv": {
+    "NDS_BRIDGE_PORT": "17778",
+    "NDS_GDB_PORT": "3333"
+  },
+  "remoteEnv": {
+    "NDS_HOST_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
+  },
   "remoteUser": "root",
   "customizations": {
     "vscode": {

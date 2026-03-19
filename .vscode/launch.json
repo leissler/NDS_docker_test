@@ -1,0 +1,46 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug NDS ARM9 (Auto)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/arm9/arm9.elf",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "${workspaceFolder}/tools/arm-gdb-wrapper.sh",
+      "miDebuggerServerAddress": "127.0.0.1:3333",
+      "launchCompleteCommand": "exec-continue",
+      "targetArchitecture": "arm",
+      "hardwareBreakpoints": {
+        "require": false,
+        "limit": 8
+      },
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "preLaunchTask": "Prepare Debug Session (auto)",
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Run NDS Emulator (Auto)",
+      "type": "pwa-node",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/run-emulator.mjs",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NDS_LAUNCH_CONTEXT": "auto"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}

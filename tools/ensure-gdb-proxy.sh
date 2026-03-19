@@ -33,6 +33,22 @@ is_local_listener_present() {
     return $?
   fi
 
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "${port}" <<'PY'
+import socket
+import sys
+
+port = int(sys.argv[1])
+try:
+    with socket.create_connection(("127.0.0.1", port), timeout=0.3):
+        pass
+except OSError:
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
+    return $?
+  fi
+
   return 1
 }
 

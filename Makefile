@@ -6,7 +6,7 @@ DOCKERFILE ?= Dockerfile
 BUILDER_IMAGE ?= ndscompiler-builder
 DEVCONTAINER_IMAGE ?= nds-devcontainer
 
-.PHONY: help build build-debug build-latest build-latest-debug build-local clean distclean _build
+.PHONY: help build build-debug build-latest build-latest-debug build-local run run-debug run-no-build run-debug-no-build clean-run clean-run-debug clean distclean _build _run
 
 help:
 	@echo "Available targets:"
@@ -15,6 +15,12 @@ help:
 	@echo "  make build-latest  - Rebuild Docker toolchain with latest packages, then build release ROM"
 	@echo "  make build-latest-debug - Rebuild Docker toolchain with latest packages, then build debug ROM"
 	@echo "  make build-local   - Build directly with local toolchain (expects BLOCKSDS setup)"
+	@echo "  make run           - Build release ROM, then run in emulator"
+	@echo "  make run-debug     - Build debug ROM, then run in emulator"
+	@echo "  make run-no-build  - Run release ROM in emulator without rebuilding"
+	@echo "  make run-debug-no-build - Run debug ROM in emulator without rebuilding"
+	@echo "  make clean-run     - Clean, rebuild release ROM, then run in emulator"
+	@echo "  make clean-run-debug - Clean, rebuild debug ROM, then run in emulator"
 	@echo "  make clean         - Remove generated build artifacts and ROMs"
 	@echo "  make distclean     - clean + remove local Docker build images (host only)"
 
@@ -51,6 +57,38 @@ _build:
 
 build-local:
 	@python3 $(BUILD_SCRIPT)
+
+run: build
+	@$(MAKE) _run MODE=release SKIP_BUILD=1
+
+run-debug: build-debug
+	@$(MAKE) _run MODE=debug SKIP_BUILD=1
+
+run-no-build:
+	@$(MAKE) _run MODE=release SKIP_BUILD=1
+
+run-debug-no-build:
+	@$(MAKE) _run MODE=debug SKIP_BUILD=1
+
+_run:
+	@set -e; \
+	if command -v node >/dev/null 2>&1; then \
+		NODE_BIN=node; \
+	elif command -v nodejs >/dev/null 2>&1; then \
+		NODE_BIN=nodejs; \
+	else \
+		echo "Error: node (or nodejs) not found."; \
+		exit 1; \
+	fi; \
+	NDS_LAUNCH_MODE=$(MODE) NDS_LAUNCH_CONTEXT=auto NDS_SKIP_BUILD=$(SKIP_BUILD) "$$NODE_BIN" tools/run-emulator.mjs
+
+clean-run:
+	@$(MAKE) clean
+	@$(MAKE) run
+
+clean-run-debug:
+	@$(MAKE) clean
+	@$(MAKE) run-debug
 
 clean:
 	@set -e; \

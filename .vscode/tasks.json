@@ -14,11 +14,15 @@
     {
       "label": "Debug: Reset Logs",
       "type": "shell",
-      "command": "bash",
+      "command": "node",
       "args": [
-        "-lc",
-        "mkdir -p \"${workspaceFolder}/.debug-logs\" && find \"${workspaceFolder}/.debug-logs\" -mindepth 1 -maxdepth 1 -type f ! -name \"nds-host-bridge.log\" -delete && : > \"${workspaceFolder}/.debug-logs/nds-host-bridge.log\" && echo \"Reset ${workspaceFolder}/.debug-logs (kept host bridge log file)\""
+        "${workspaceFolder}/tools/reset-debug-logs.mjs"
       ],
+      "options": {
+        "env": {
+          "NDS_DEBUG_LOG_DIR": "${workspaceFolder}/.debug-logs"
+        }
+      },
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -55,6 +59,14 @@
         "-lc",
         "\"${workspaceFolder}/tools/arm-gdb-wrapper.sh\" --version >/dev/null"
       ],
+      "windows": {
+        "command": "cmd",
+        "args": [
+          "/d",
+          "/c",
+          "\"${workspaceFolder}\\tools\\arm-gdb-wrapper.cmd\" --version >nul"
+        ]
+      },
       "problemMatcher": [],
       "hide": true
     },
@@ -92,6 +104,16 @@
         "-lc",
         "\"${workspaceFolder}/tools/ensure-gdb-proxy.sh\""
       ],
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\tools\\ensure-gdb-proxy.ps1"
+        ]
+      },
       "options": {
         "env": {
           "NDS_DEBUG_LOG_DIR": "${workspaceFolder}/.debug-logs",

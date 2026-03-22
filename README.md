@@ -19,6 +19,7 @@ This template supports two audiences:
 2. Docker (Makefile fallback)
 - melonDS installed for running ROMs
 - `node` (or `nodejs`) only if you want automated `make run*` emulator launch
+- On Windows, `make`-based terminal workflow expects Git Bash/WSL. Otherwise, use VSCode/devcontainer workflow.
 
 ### Build from terminal
 ```bash
@@ -75,6 +76,15 @@ Then rebuild with `make build` or `make build-debug`.
 2. Set breakpoints in `source/main.c`.
 3. Use `Run -> Start Debugging` with `Debug NDS ARM9 (Auto)`.
 
+### Windows 11 preflight (host)
+- Install melonDS.
+- Install an ARM GDB (`arm-none-eabi-gdb.exe`) and ensure it is in `PATH`.
+- If needed, set `NDS_GDB_BIN` to the full gdb executable path.
+- If you need to start the host bridge manually:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_nds_bridge.ps1
+```
+
 ### Devcontainer VSCode debug
 1. Reopen in container.
 2. Use `Run -> Start Debugging`.
@@ -95,6 +105,13 @@ Release (`make build`):
 Debug (`make build-debug`):
 - C flags: `-O0 -g3 -DDEBUG -Wall -std=gnu11`
 - ROM: `<project>-debug.nds`
+
+Artifact separation note:
+- Release and debug artifacts are already split by ROM name.
+- If you want strict per-OS separation when sharing one workspace between macOS and Windows, set custom ROM names per environment:
+  - `NDS_ROM_NAME` for `build.py` runs
+  - `NDS_ROM_RELEASE` / `NDS_ROM_DEBUG` for `tools/run-emulator.mjs`
+- The safest option is one clone/worktree per OS.
 
 ## 4. Useful Commands
 
@@ -120,5 +137,8 @@ make distclean
 ```bash
 bash scripts/start_nds_bridge.sh
 ```
+- On Windows host, use:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_nds_bridge.ps1
+```
 - Optional bridge overrides can be placed in `.emulator-bridge.env` (see `.emulator-bridge.env.example`).
-

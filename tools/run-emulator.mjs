@@ -159,7 +159,7 @@ async function launchRomOnHostViaBridge(containerRomPath, debug) {
       "Host emulator bridge is not reachable.\n" +
       `Port: ${port}\n` +
       `Checked hosts: ${candidates.join(", ")}\n` +
-      "Run on host: bash scripts/start_nds_bridge.sh"
+      `Run on host: ${hostBridgeStartCommandHint()}`
     );
   }
 
@@ -211,7 +211,7 @@ async function launchRomOnHostViaBridge(containerRomPath, debug) {
   if (inContainer && (!Number.isFinite(bridgeGdbPort) || bridgeGdbPort <= 0)) {
     fail(
       "Host bridge did not provide a usable gdb_bridge_port for container debugging.\n" +
-      "Restart the host bridge (scripts/start_nds_bridge.sh) and retry."
+      `Restart the host bridge (${hostBridgeStartCommandHint()}) and retry.`
     );
   }
   const selectedGdbPort = inContainer ? bridgeGdbPort : localGdbPort;
@@ -335,6 +335,13 @@ function readProcRouteGateway() {
     return null;
   }
   return null;
+}
+
+function hostBridgeStartCommandHint() {
+  if (process.platform === "win32") {
+    return "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_nds_bridge.ps1";
+  }
+  return "bash scripts/start_nds_bridge.sh";
 }
 
 async function bridgeHealth(host, port) {

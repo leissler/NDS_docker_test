@@ -17,6 +17,7 @@
 !/.vscode/c_cpp_properties.json
 !/.vscode/tasks.json
 !/.vscode/launch.json
+!/.vscode/extensions.json
 !/.emulator-bridge.env.example
 
 # Local build helper module

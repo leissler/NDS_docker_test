@@ -9,6 +9,19 @@
       "cwd": "${workspaceFolder}",
       "MIMode": "gdb",
       "miDebuggerPath": "${workspaceFolder}/tools/arm-gdb-wrapper.sh",
+      "linux": {
+        "sourceFileMap": {
+          "/test": "${workspaceFolder}",
+          "/workspaces/test": "${workspaceFolder}"
+        }
+      },
+      "windows": {
+        "miDebuggerPath": "${workspaceFolder}/tools/arm-gdb-wrapper.cmd",
+        "sourceFileMap": {
+          "/test": "${workspaceFolder}",
+          "/workspaces/test": "${workspaceFolder}"
+        }
+      },
       "miDebuggerServerAddress": "127.0.0.1:3333",
       "launchCompleteCommand": "exec-continue",
       "targetArchitecture": "arm",

@@ -23,6 +23,8 @@
     "vscode": {
       "extensions": [
         "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cpptools-themes",
         "ms-python.python"
       ]
     }

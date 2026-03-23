@@ -5,6 +5,18 @@
       "label": "Build All",
       "type": "shell",
       "command": "make build",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\scripts\\build_nds.ps1",
+          "-Profile",
+          "release"
+        ]
+      },
       "group": {
         "kind": "build",
         "isDefault": true
@@ -34,6 +46,18 @@
       "label": "Build Debug ROM",
       "type": "shell",
       "command": "make build-debug",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\scripts\\build_nds.ps1",
+          "-Profile",
+          "debug"
+        ]
+      },
       "group": {
         "kind": "build"
       },
@@ -43,12 +67,36 @@
       "label": "Build All (Latest Toolchain)",
       "type": "shell",
       "command": "make build-latest",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\scripts\\build_nds.ps1",
+          "-Profile",
+          "release",
+          "-Latest"
+        ]
+      },
       "problemMatcher": []
     },
     {
       "label": "Clean All",
       "type": "shell",
       "command": "make distclean",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\scripts\\clean_nds.ps1",
+          "-Distclean"
+        ]
+      },
       "problemMatcher": []
     },
     {

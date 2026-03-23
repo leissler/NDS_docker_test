@@ -6,7 +6,21 @@ DOCKERFILE ?= Dockerfile
 BUILDER_IMAGE ?= ndscompiler-builder
 DEVCONTAINER_IMAGE ?= nds-devcontainer
 
-.PHONY: help build build-debug build-latest build-latest-debug build-local run run-debug run-no-build run-debug-no-build clean-run clean-run-debug clean distclean _build _run
+STAMP_DIR := .docker-stamps
+BUILDER_STAMP := $(STAMP_DIR)/builder.stamp
+
+CONTAINER_RUNTIME ?= $(shell \
+	if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then echo docker; \
+	elif command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then echo podman; \
+	elif command -v docker >/dev/null 2>&1; then echo docker; \
+	elif command -v podman >/dev/null 2>&1; then echo podman; \
+	fi)
+DOCKER_START_TIMEOUT ?= 60
+
+.PHONY: help build build-debug build-latest build-latest-debug build-local \
+	run run-debug run-no-build run-debug-no-build clean-run clean-run-debug \
+	clean distclean check-container-runtime docker-build-builder docker-build-builder-latest \
+	ensure-builder-image clean-docker-stamps _build _run
 
 help:
 	@echo "Available targets:"
@@ -22,7 +36,79 @@ help:
 	@echo "  make clean-run     - Clean, rebuild release ROM, then run in emulator"
 	@echo "  make clean-run-debug - Clean, rebuild debug ROM, then run in emulator"
 	@echo "  make clean         - Remove generated build artifacts and ROMs"
-	@echo "  make distclean     - clean + remove local Docker build images (host only)"
+	@echo "  make distclean     - clean + remove local Docker build images and stamps"
+	@echo "  make docker-build-builder - Build/rebuild Docker builder image"
+	@echo "  make check-container-runtime - Verify runtime and auto-start Docker Desktop when possible"
+
+$(STAMP_DIR):
+	@mkdir -p $(STAMP_DIR)
+
+check-container-runtime:
+	@set -e; \
+	if [ -z "$(CONTAINER_RUNTIME)" ]; then \
+		echo "No supported container runtime found. Install docker or podman."; \
+		exit 1; \
+	fi; \
+	if ! command -v "$(CONTAINER_RUNTIME)" >/dev/null 2>&1; then \
+		echo "Container runtime '$(CONTAINER_RUNTIME)' is not installed."; \
+		exit 1; \
+	fi; \
+	if "$(CONTAINER_RUNTIME)" info >/dev/null 2>&1; then \
+		exit 0; \
+	fi; \
+	if [ "$(CONTAINER_RUNTIME)" = "docker" ] && command -v open >/dev/null 2>&1 && [ -d "/Applications/Docker.app" ]; then \
+		echo "Docker daemon is not running. Starting Docker Desktop..."; \
+		open -a Docker; \
+		i=0; \
+		until "$(CONTAINER_RUNTIME)" info >/dev/null 2>&1; do \
+			i=$$((i + 1)); \
+			if [ $$i -ge "$(DOCKER_START_TIMEOUT)" ]; then \
+				echo "Timed out waiting for Docker Desktop after $(DOCKER_START_TIMEOUT)s."; \
+				exit 1; \
+			fi; \
+			sleep 1; \
+		done; \
+		echo "Docker Desktop is ready."; \
+	elif [ "$(CONTAINER_RUNTIME)" = "docker" ] && grep -qi microsoft /proc/version 2>/dev/null; then \
+		echo "Docker daemon is not running. Starting Docker Desktop from WSL..."; \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -NoProfile -NonInteractive -Command "Start-Process 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'" >/dev/null 2>&1 || true; \
+		elif command -v cmd.exe >/dev/null 2>&1; then \
+			cmd.exe /C start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" >/dev/null 2>&1 || true; \
+		fi; \
+		i=0; \
+		until "$(CONTAINER_RUNTIME)" info >/dev/null 2>&1; do \
+			i=$$((i + 1)); \
+			if [ $$i -ge "$(DOCKER_START_TIMEOUT)" ]; then \
+				echo "Timed out waiting for Docker Desktop after $(DOCKER_START_TIMEOUT)s."; \
+				exit 1; \
+			fi; \
+			sleep 1; \
+		done; \
+		echo "Docker Desktop is ready."; \
+	else \
+		echo "Container runtime '$(CONTAINER_RUNTIME)' is installed but not running."; \
+		echo "Start the runtime or override with CONTAINER_RUNTIME=podman."; \
+		exit 1; \
+	fi
+
+$(BUILDER_STAMP): $(DOCKERFILE) | $(STAMP_DIR)
+	@$(MAKE) check-container-runtime
+	@if $(CONTAINER_RUNTIME) image inspect $(BUILDER_IMAGE) >/dev/null 2>&1; then \
+		echo "Rebuilding $(BUILDER_IMAGE) because Dockerfile changed..."; \
+	else \
+		echo "Docker image $(BUILDER_IMAGE) not found, building it..."; \
+	fi
+	$(CONTAINER_RUNTIME) build -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .
+	@touch $(BUILDER_STAMP)
+
+docker-build-builder: ensure-builder-image
+
+docker-build-builder-latest: check-container-runtime | $(STAMP_DIR)
+	$(CONTAINER_RUNTIME) build --pull --no-cache -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .
+	@touch $(BUILDER_STAMP)
+
+ensure-builder-image: check-container-runtime $(BUILDER_STAMP)
 
 build:
 	@$(MAKE) _build PROFILE=release LATEST=0
@@ -42,16 +128,16 @@ _build:
 		NDS_BUILD_PROFILE=$(PROFILE) python3 $(BUILD_SCRIPT); \
 	elif command -v python3 >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1 && [ -n "$$BLOCKSDS" ] && [ -d "$$BLOCKSDS" ]; then \
 		NDS_BUILD_PROFILE=$(PROFILE) python3 $(BUILD_SCRIPT); \
-	elif command -v docker >/dev/null 2>&1; then \
+	elif [ -n "$(CONTAINER_RUNTIME)" ]; then \
 		if [ "$(LATEST)" = "1" ]; then \
-			docker build --pull --no-cache -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .; \
+			$(MAKE) docker-build-builder-latest; \
 		else \
-			docker build -f $(DOCKERFILE) --target builder -t $(BUILDER_IMAGE) .; \
+			$(MAKE) ensure-builder-image; \
 		fi; \
-		docker run --rm -e NDS_BUILD_PROFILE=$(PROFILE) -v "$(PROJECT_DIR):/test" -w /test $(BUILDER_IMAGE) python3 $(BUILD_SCRIPT); \
+		$(CONTAINER_RUNTIME) run --rm -e NDS_BUILD_PROFILE=$(PROFILE) -v "$(PROJECT_DIR):/test" -w /test $(BUILDER_IMAGE) python3 $(BUILD_SCRIPT); \
 	else \
 		echo "Error: no build environment found."; \
-		echo "Use devcontainer, install local BlocksDS toolchain, or install Docker."; \
+		echo "Use devcontainer, install local BlocksDS toolchain, or install Docker/Podman."; \
 		exit 1; \
 	fi
 
@@ -99,12 +185,15 @@ clean:
 	find . -maxdepth 1 -name 'build.ninja' -delete; \
 	find . -maxdepth 1 -name '.ninja_deps' -delete; \
 	find . -maxdepth 1 -name '.ninja_log' -delete; \
-	find build output architectds/__pycache__ -type f -delete 2>/dev/null || true; \
-	find build output architectds/__pycache__ -depth -type d -empty -delete 2>/dev/null || true; \
+	find build output architectds/__pycache__ scripts/__pycache__ tools/__pycache__ -type f -delete 2>/dev/null || true; \
+	find build output architectds/__pycache__ scripts/__pycache__ tools/__pycache__ -depth -type d -empty -delete 2>/dev/null || true; \
 	echo "Clean complete."
 
-distclean: clean
-	@if [ ! -f /.dockerenv ] && [ -z "$$REMOTE_CONTAINERS" ] && command -v docker >/dev/null 2>&1; then \
-		docker rmi -f ndscompiler ndscompiler-builder $(DEVCONTAINER_IMAGE) nds-devcontainer-test 2>/dev/null || true; \
+clean-docker-stamps:
+	@rm -rf $(STAMP_DIR)
+
+distclean: clean clean-docker-stamps
+	@if [ ! -f /.dockerenv ] && [ -z "$$REMOTE_CONTAINERS" ] && [ -n "$(CONTAINER_RUNTIME)" ] && command -v "$(CONTAINER_RUNTIME)" >/dev/null 2>&1; then \
+		$(CONTAINER_RUNTIME) rmi -f ndscompiler ndscompiler-builder $(DEVCONTAINER_IMAGE) nds-devcontainer-test 2>/dev/null || true; \
 		echo "Docker image cleanup complete."; \
 	fi

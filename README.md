@@ -19,16 +19,26 @@ This template supports two audiences:
 2. Docker (Makefile fallback)
 - melonDS installed for running ROMs
 - `node` (or `nodejs`) only if you want automated `make run*` emulator launch
-- On Windows, `make`-based terminal workflow expects Git Bash/WSL. Otherwise, use VSCode/devcontainer workflow.
+- On Windows, if you don't use `make` (Git Bash/WSL), use the provided PowerShell scripts in `scripts/*.ps1`.
 
 ### Build from terminal
 ```bash
 make build
 ```
 
+PowerShell (Windows, no `make` required):
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_nds.ps1 -Profile release
+```
+
 Debug build:
 ```bash
 make build-debug
+```
+
+PowerShell debug build:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_nds.ps1 -Profile debug
 ```
 
 Generated ROM names:
@@ -41,9 +51,19 @@ Build + run release:
 make run
 ```
 
+PowerShell (build + run release):
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_nds.ps1 -Mode release
+```
+
 Build + run debug:
 ```bash
 make run-debug
+```
+
+PowerShell (build + run debug):
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_nds.ps1 -Mode debug
 ```
 
 Run without rebuilding:
@@ -125,14 +145,27 @@ Clean build outputs:
 make clean
 ```
 
+PowerShell clean:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean_nds.ps1
+```
+
 Aggressive cleanup (also removes local Docker images used by this project):
 ```bash
 make distclean
 ```
 
+PowerShell distclean:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean_nds.ps1 -Distclean
+```
+
 ## 5. Notes and Troubleshooting
 
 - melonDS may print missing `*.ml1` ... `*.ml8` files on startup. These are optional slot files and are harmless.
+- Docker fallback now behaves like the GBA template:
+  - Builder image is cached with local stamp files (`.docker-stamps/`)
+  - If Docker Desktop is installed but not running, `make` attempts to start it automatically on macOS and WSL.
 - If devcontainer debug prelaunch fails, ensure host bridge is running:
 ```bash
 bash scripts/start_nds_bridge.sh

@@ -133,7 +133,11 @@ function Get-DockerContextHost {
   }
 
   try {
-    $out = & $RuntimeExe context inspect --format '{{ (index .Endpoints "docker").Host }}' 2>$null
+    $ctx = (& $RuntimeExe context show 2>$null | Out-String).Trim()
+    if (-not $ctx) {
+      return ""
+    }
+    $out = & $RuntimeExe context inspect $ctx --format '{{ .Endpoints.docker.Host }}' 2>$null
     if ($LASTEXITCODE -ne 0) {
       return ""
     }
@@ -270,15 +274,11 @@ if ($LASTEXITCODE -ne 0) {
   throw "Container build failed with exit code $LASTEXITCODE."
 }
 
-if ($isRemoteDockerDaemon) {
+if (-not (Test-Path $romPath)) {
   $fetched = Try-FetchRomFromMountedWorkspace -RuntimeExe $runtime -ImageName $BuilderImage -MountWorkspace $WorkspaceDirMount -RomName $romName -RomOutPath $romPath
   if (-not $fetched) {
-    throw "Build succeeded but '$romName' could not be copied from mounted remote workspace. Verify NDS_WORKSPACE_DIR_MOUNT."
+    throw "Build succeeded but '$romName' was not found locally and could not be copied from mounted workspace. If using a remote daemon, verify NDS_WORKSPACE_DIR_MOUNT."
   }
-}
-
-if (-not (Test-Path $romPath)) {
-  throw "Build succeeded but '$romName' was not found in workspace."
 }
 
 Write-Output ("Built ./{0}" -f $romName)

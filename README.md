@@ -34,12 +34,6 @@ Windows PowerShell:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_nds.ps1 -Profile release
 ```
 
-If Docker uses a remote daemon (for example a Windows VM using Docker context over SSH to a Mac host), set a host-visible mount path first:
-```powershell
-$env:NDS_WORKSPACE_DIR_MOUNT="/Users/<host-user>/Development/RetroConsoles/NDS/projects/test"
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_nds.ps1 -Profile release
-```
-
 Debug ROM:
 ```bash
 make build-debug
@@ -60,8 +54,6 @@ Windows PowerShell:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_nds.ps1 -Mode release
 ```
-
-For remote Docker daemon usage, set `NDS_WORKSPACE_DIR_MOUNT` in the same PowerShell session before running `build_nds.ps1` or `run_nds.ps1`.
 
 Build + run debug:
 ```bash
@@ -208,6 +200,11 @@ bash scripts/start_nds_bridge.sh
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_nds_bridge.ps1
 ```
 - Optional bridge overrides can be stored in `.emulator-bridge.env` (see `.emulator-bridge.env.example`).
+- Advanced (rare): if Docker uses a remote daemon (for example a Parallels Windows VM using Docker context over SSH to a Mac host), set:
+```powershell
+$env:NDS_WORKSPACE_DIR_MOUNT="/Users/<host-user>/Development/RetroConsoles/NDS/projects/test"
+```
+  then run `scripts/build_nds.ps1` / `scripts/run_nds.ps1` in the same PowerShell session.
 
 ## 7. Artifact Separation
 

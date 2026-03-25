@@ -1,9 +1,9 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 param(
   [switch]$Distclean
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $WorkspaceRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path

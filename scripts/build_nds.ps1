@@ -1,11 +1,11 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 param(
   [ValidateSet("release", "debug")]
   [string]$Profile = "release",
   [switch]$Latest
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $WorkspaceRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
@@ -13,6 +13,14 @@ $BuildScript = Join-Path $WorkspaceRoot "build.py"
 $Dockerfile = Join-Path $WorkspaceRoot "Dockerfile"
 $BuilderImage = if ($env:BUILDER_IMAGE) { $env:BUILDER_IMAGE } else { "ndscompiler-builder" }
 $DockerStartTimeout = if ($env:DOCKER_START_TIMEOUT) { [int]$env:DOCKER_START_TIMEOUT } else { 60 }
+$WorkspaceDirMount = if ($env:NDS_WORKSPACE_DIR_MOUNT) {
+  $env:NDS_WORKSPACE_DIR_MOUNT
+} elseif ($env:NDS_SOURCE_DIR_MOUNT) {
+  # Backward-compatible alias with older naming.
+  $env:NDS_SOURCE_DIR_MOUNT
+} else {
+  $WorkspaceRoot
+}
 
 function Resolve-Python {
   if ($env:PYTHON_BIN) {
@@ -32,6 +40,19 @@ function Resolve-Python {
   }
 
   return $null
+}
+
+function Resolve-ProjectName {
+  return [System.IO.Path]::GetFileName($WorkspaceRoot)
+}
+
+function Resolve-RomName {
+  param([string]$BuildProfile, [string]$ProjectName)
+
+  if ($BuildProfile -eq "debug") {
+    return "${ProjectName}-debug.nds"
+  }
+  return "${ProjectName}.nds"
 }
 
 function Has-LocalToolchain {
@@ -86,8 +107,8 @@ function Ensure-ContainerRuntimeReady {
     return
   }
 
-  if ([System.IO.Path]::GetFileName($RuntimeExe).ToLowerInvariant() -eq "docker.exe" -or
-      [System.IO.Path]::GetFileName($RuntimeExe).ToLowerInvariant() -eq "docker") {
+  $runtimeName = [System.IO.Path]::GetFileName($RuntimeExe).ToLowerInvariant()
+  if ($runtimeName -eq "docker.exe" -or $runtimeName -eq "docker") {
     Write-Output "Docker daemon is not running. Starting Docker Desktop..."
     Start-DockerDesktop
     for ($i = 0; $i -lt $DockerStartTimeout; $i++) {
@@ -103,15 +124,39 @@ function Ensure-ContainerRuntimeReady {
   throw "Container runtime '$RuntimeExe' is installed but not running."
 }
 
+function Get-DockerContextHost {
+  param([string]$RuntimeExe)
+
+  $runtimeName = [System.IO.Path]::GetFileName($RuntimeExe).ToLowerInvariant()
+  if ($runtimeName -ne "docker.exe" -and $runtimeName -ne "docker") {
+    return ""
+  }
+
+  try {
+    $out = & $RuntimeExe context inspect --format '{{ (index .Endpoints "docker").Host }}' 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return ""
+    }
+    return ($out | Out-String).Trim()
+  } catch {
+    return ""
+  }
+}
+
 function Invoke-LocalBuild {
+  param([string]$RomName)
+
   $python = Resolve-Python
   if (-not $python) {
     throw "Python not found."
   }
 
   $oldProfile = $env:NDS_BUILD_PROFILE
+  $oldRomName = $env:NDS_ROM_NAME
   try {
     $env:NDS_BUILD_PROFILE = $Profile
+    $env:NDS_ROM_NAME = $RomName
+
     $argsList = @()
     $argsList += $python.Prefix
     $argsList += @($BuildScript)
@@ -121,6 +166,7 @@ function Invoke-LocalBuild {
     }
   } finally {
     $env:NDS_BUILD_PROFILE = $oldProfile
+    $env:NDS_ROM_NAME = $oldRomName
   }
 }
 
@@ -129,8 +175,12 @@ function Ensure-BuilderImage {
 
   $needsBuild = $ForceLatest
   if (-not $needsBuild) {
-    & $RuntimeExe image inspect $BuilderImage *> $null
-    $needsBuild = $LASTEXITCODE -ne 0
+    try {
+      & $RuntimeExe image inspect $BuilderImage 1>$null 2>$null
+      $needsBuild = $LASTEXITCODE -ne 0
+    } catch {
+      $needsBuild = $true
+    }
   }
 
   if ($needsBuild) {
@@ -147,8 +197,53 @@ function Ensure-BuilderImage {
   }
 }
 
+function Try-FetchRomFromMountedWorkspace {
+  param(
+    [string]$RuntimeExe,
+    [string]$ImageName,
+    [string]$MountWorkspace,
+    [string]$RomName,
+    [string]$RomOutPath
+  )
+
+  $containerId = ""
+  try {
+    $containerId = (& $RuntimeExe create -v "${MountWorkspace}:/test:ro" $ImageName sh -c "sleep 300" 2>$null | Out-String).Trim()
+    if (-not $containerId) {
+      return $false
+    }
+
+    & $RuntimeExe start $containerId 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+
+    & $RuntimeExe exec $containerId test -f "/test/$RomName" 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+
+    & $RuntimeExe cp "${containerId}:/test/$RomName" $RomOutPath 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return $false
+    }
+
+    return $true
+  } catch {
+    return $false
+  } finally {
+    if ($containerId) {
+      & $RuntimeExe rm -f $containerId 1>$null 2>$null
+    }
+  }
+}
+
+$projectName = Resolve-ProjectName
+$romName = Resolve-RomName -BuildProfile $Profile -ProjectName $projectName
+$romPath = Join-Path $WorkspaceRoot $romName
+
 if (Has-LocalToolchain) {
-  Invoke-LocalBuild
+  Invoke-LocalBuild -RomName $romName
   exit 0
 }
 
@@ -158,9 +253,32 @@ if (-not $runtime) {
 }
 
 Ensure-ContainerRuntimeReady -RuntimeExe $runtime
+
+$daemonHost = Get-DockerContextHost -RuntimeExe $runtime
+$isRemoteDockerDaemon = $false
+if ($daemonHost -and -not $daemonHost.StartsWith("unix://") -and -not $daemonHost.StartsWith("npipe://")) {
+  $isRemoteDockerDaemon = $true
+  if (-not $env:NDS_WORKSPACE_DIR_MOUNT -and -not $env:NDS_SOURCE_DIR_MOUNT) {
+    throw "Detected remote Docker daemon '$daemonHost'. Set NDS_WORKSPACE_DIR_MOUNT to a workspace path on the daemon host."
+  }
+}
+
 Ensure-BuilderImage -RuntimeExe $runtime -ForceLatest:$Latest
 
-& $runtime run --rm -e "NDS_BUILD_PROFILE=$Profile" -v "$WorkspaceRoot:/test" -w /test $BuilderImage python3 build.py
+& $runtime run --rm -e "NDS_BUILD_PROFILE=$Profile" -e "NDS_ROM_NAME=$romName" -v "${WorkspaceDirMount}:/test" -w /test $BuilderImage python3 build.py
 if ($LASTEXITCODE -ne 0) {
   throw "Container build failed with exit code $LASTEXITCODE."
 }
+
+if ($isRemoteDockerDaemon) {
+  $fetched = Try-FetchRomFromMountedWorkspace -RuntimeExe $runtime -ImageName $BuilderImage -MountWorkspace $WorkspaceDirMount -RomName $romName -RomOutPath $romPath
+  if (-not $fetched) {
+    throw "Build succeeded but '$romName' could not be copied from mounted remote workspace. Verify NDS_WORKSPACE_DIR_MOUNT."
+  }
+}
+
+if (-not (Test-Path $romPath)) {
+  throw "Build succeeded but '$romName' was not found in workspace."
+}
+
+Write-Output ("Built ./{0}" -f $romName)

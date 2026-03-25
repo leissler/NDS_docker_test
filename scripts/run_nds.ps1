@@ -1,11 +1,11 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 param(
   [ValidateSet("release", "debug")]
   [string]$Mode = "release",
   [switch]$NoBuild
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $WorkspaceRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
